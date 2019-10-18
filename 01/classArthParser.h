@@ -17,8 +17,7 @@ int myStrToInt(char *inputString, int pos, int end) {
 }
 
 class ArthParser{
-    
-    char *stringBegin;
+    char* stringBegin;
     int len;
     char curLexType;
     int curVal;
@@ -26,9 +25,10 @@ class ArthParser{
     bool isLast;
 
     public:
+        ArthParser(char*, int);
+        ~ArthParser();
         int Calculate();
-        ArthParser(char *);
-        void SetString(char *);
+        void SetString(char*, int);
     private:
         int GetSumTerm();
         int GetMultTerm();
@@ -36,17 +36,21 @@ class ArthParser{
 
 };
 
-ArthParser::ArthParser(char *inputExpression) {
-    len = strlen(inputExpression);
+ArthParser::ArthParser(char *inputExpression, int expressionLength) {
     stringBegin = inputExpression;
+    len = expressionLength;
     curLexType = 'S';
     curVal = 0;
     idx=0;
     isLast = false;
 }
 
-void ArthParser::SetString(char *inputExpression) {
-    ArthParser::len = strlen(inputExpression);
+ArthParser::~ArthParser() {
+    delete stringBegin;
+}
+
+void ArthParser::SetString(char *inputExpression, int expressionLength) {
+    ArthParser::len = expressionLength;
     ArthParser::stringBegin = inputExpression;
     ArthParser::curLexType = 'S';
     ArthParser::curVal = 0;
