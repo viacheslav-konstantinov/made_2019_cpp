@@ -5,30 +5,34 @@
 using namespace std;
 
 
-int main() {
-    cout << "Enter your arithmetic expression or 'quit'/'exit' to finish:" << endl;
-    cout << "Just digits and symbols '+', '-', '*', '/' and binary'-' are allowed" << endl;
-    cout << "Neither parentheses, nor spaces are allowed" << endl;
-    string inputString;
+int main(int argc, char *argv[]) {
 
-    while (true)
-    {
-        getline(cin, inputString);
-        if (inputString=="exit" or inputString=="quit") {
-            return 0;
-        }
+    if(argc == 1) {
+        printf("ERROR: Expected at least 1 argument\n");
+        return -1;
+    }
+    
+    int size = 0;
+    for (int i = 1; i<=argc-1; i++) {
+        size = size + strlen(argv[i]);
+    }
 
-        char * myStr = new char [inputString.length()];
-        strcpy (myStr, inputString.c_str());
+    char *inputExpression = new char[size];
+    
+    for(int i = 1; i <= argc-1; i++) {
+        strcat(inputExpression, argv[i]);
+    }
+
+    try {
         
-        ArthParser myParser (myStr);
-
-        try {
-            cout << myParser.Calculate() << endl;
-        }
-        catch(const invalid_argument e) {
-            cerr << e.what() << '\n';
-            return -1;
-        }
+        ArthParser myParser (inputExpression, size);
+        cout << myParser.Calculate() << endl;
+        delete inputExpression;
+        return 0;
+    }
+    catch(const invalid_argument& e) {
+        delete inputExpression;
+        cerr << e.what() << '\n';
+        return -1;
     }
 }
