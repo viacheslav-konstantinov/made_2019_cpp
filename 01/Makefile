@@ -5,11 +5,11 @@ all: arithmeticParser
 test: testParser
 	./testParser --reporter compact --success
 
-testParser:
+testParser: arithmeticParser
 	$(CC) -o testParser testParser.cpp
 
 run: arithmeticParser
-	./arithmeticParser
+	./arithmeticParser 4 +9 *2 +2*-3
 
 arithmeticParser: main.o
 	$(CC) -o arithmeticParser main.o
