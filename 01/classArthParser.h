@@ -64,9 +64,10 @@ int ArthParser::Calculate() {
     }
 
     int result = ArthParser::GetSumTerm();
+    char lexType = ArthParser::curLexType;
 
     while ((ArthParser::curLexType=='+') or (ArthParser::curLexType=='-')) {
-        char lexType = ArthParser::curLexType;
+        lexType = ArthParser::curLexType;
         ArthParser::GetNextLex();
 
         if (lexType=='+') {
@@ -87,10 +88,11 @@ int ArthParser::Calculate() {
 
 int ArthParser::GetSumTerm() {
     int result = ArthParser::GetMultTerm();
+    char lexType;
 
     while ((ArthParser::curLexType=='*') or (ArthParser::curLexType=='/'))
     {
-        char lexType = ArthParser::curLexType;
+        lexType = ArthParser::curLexType;
         ArthParser::GetNextLex();
 
         if (lexType=='*') {
@@ -145,8 +147,6 @@ void ArthParser::GetNextLex() {
             // catching arithmetic operators
             } else if (find(opers, opers+4, *(ArthParser::stringBegin + ArthParser::idx)) != opers+4) {
 
-
-
                 if ((*(ArthParser::stringBegin + ArthParser::idx)!='-') and \
                     (ArthParser::idx>0) and \
                     (find(opers, opers+4, *(ArthParser::stringBegin + ArthParser::idx-1)) != opers+4)){
@@ -167,8 +167,7 @@ void ArthParser::GetNextLex() {
                         (find(nums, nums+10, *(ArthParser::stringBegin + ArthParser::idx)) != nums+10)) {
                             
                         while ((find(nums, nums+10, *(ArthParser::stringBegin + ArthParser::idx)) != nums+10) and \
-                            (ArthParser::idx < ArthParser::len - 1)) {
-                            
+                            (ArthParser::idx < ArthParser::len - 1)) {                            
                             ++ArthParser::idx;
                         }
 
