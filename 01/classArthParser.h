@@ -8,8 +8,8 @@
 class ArthParser
 {
     public:
-        ArthParser(const std::string);
-        void setString(const std::string);
+        ArthParser(const std::string&);
+        void setString(const std::string&);
         std::string getString();
         size_t size();
         int calculate();
@@ -28,18 +28,18 @@ class ArthParser
         void getNextLex_();
 };
 
-ArthParser::ArthParser(const std::string inputExpression) 
+ArthParser::ArthParser(const std::string& inputExpression) 
 {
-    expressionToCalculate_ = inputExpression;
+    expressionToCalculate_ = std::string(inputExpression);
     curLexType_ = 'S';
     curVal_ = 0;
     idx_ = 0;
     isLast_ = false;
 }
 
-void ArthParser::setString(std::string inputExpression) 
+void ArthParser::setString(const std::string& inputExpression) 
 {
-    expressionToCalculate_ = inputExpression;
+    expressionToCalculate_ = std::string(inputExpression);
     curLexType_ = 'S';
     curVal_ = 0;
     idx_ = 0;
