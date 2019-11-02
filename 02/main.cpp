@@ -25,9 +25,18 @@ private:
 
 LinearAllocator::LinearAllocator(size_t maxSize)
 {
-    beginPtr_ = (char*) malloc(maxSize);
-    endPtr_ = beginPtr_ + maxSize;
-    currentPtr_ = beginPtr_;
+    if (maxSize > 0)
+    {
+        beginPtr_ = (char*) malloc(maxSize);
+        endPtr_ = beginPtr_ + maxSize;
+        currentPtr_ = beginPtr_;
+    }
+    else
+    {
+        beginPtr_ = nullptr;
+        endPtr_ = nullptr;
+        currentPtr_ = nullptr;
+    }
 }
 
 LinearAllocator::~LinearAllocator()
