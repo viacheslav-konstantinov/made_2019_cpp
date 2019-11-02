@@ -5,7 +5,7 @@ all: arithmeticParser
 test: testParser
 	./testParser --reporter compact --success
 
-testParser: arithmeticParser classArthParser.h
+testParser: arithmeticParser
 	$(CC) -o testParser testParser.cpp
 
 run: arithmeticParser
@@ -14,7 +14,7 @@ run: arithmeticParser
 arithmeticParser: main.o
 	$(CC) -o arithmeticParser main.o
 
-main.o: main.cpp classArthParser.h
+main.o: main.cpp
 	$(CC) -c main.cpp
 
 clean:
