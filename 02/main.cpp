@@ -56,8 +56,7 @@ bool LinearAllocator::ifAllocatedMemoryUsed()
 
 char * LinearAllocator::alloc(size_t size)
 {
-    // offset pointer first, align it, and offset it back
-    if ((currentPtr_ < endPtr_) and (currentPtr_ + size <= endPtr_) and (size > 0))
+    if ((currentPtr_ < endPtr_) and (currentPtr_ + size <= endPtr_) and (size > 0) and (beginPtr_ != NULL))
     {
         char * allocatedPtr = currentPtr_;
         currentPtr_ += size;
