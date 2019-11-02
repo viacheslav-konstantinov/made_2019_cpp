@@ -25,31 +25,14 @@ private:
 
 LinearAllocator::LinearAllocator(size_t maxSize)
 {
-    if (maxSize == 0)
-    {
-        beginPtr_ = nullptr;
-        endPtr_ = nullptr;
-        currentPtr_ = nullptr;
-        throw std::invalid_argument("maxSize must be non-zero");
-    }
-    try
-    {
-        beginPtr_ = (char*) malloc(maxSize);
-        endPtr_ = beginPtr_ + maxSize;
-        currentPtr_ = beginPtr_;
-    }
-    catch (const std::bad_alloc& ba)
-    {
-        beginPtr_ = nullptr;
-        endPtr_ = nullptr;
-        currentPtr_ = nullptr;
-        throw std::invalid_argument("Not enough memory to allocate");
-    }
+    beginPtr_ = (char*) malloc(maxSize);
+    endPtr_ = beginPtr_ + maxSize;
+    currentPtr_ = beginPtr_;
 }
 
 LinearAllocator::~LinearAllocator()
 {
-    delete beginPtr_;
+    free(beginPtr_);
 }
 
 void LinearAllocator::reset() 
@@ -65,12 +48,12 @@ bool LinearAllocator::ifAllocatedMemoryUsed()
 char * LinearAllocator::alloc(size_t size)
 {
     // offset pointer first, align it, and offset it back
-    if ((currentPtr_ < endPtr_) and  (currentPtr_+size <= endPtr_) and (size > 0))
+    if ((currentPtr_ < endPtr_) and (currentPtr_ + size <= endPtr_) and (size > 0))
     {
         char * allocatedPtr = currentPtr_;
         currentPtr_ += size;
         return allocatedPtr;
-    } 
+    }
     else 
         return nullptr;
 }
