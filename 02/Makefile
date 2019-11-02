@@ -11,11 +11,8 @@ linearAllocator: main.o
 main.o: main.cpp
 	$(CC) -c main.cpp
 
-test: testAllocator
-	./testAllocator
-
-testAllocator: testAllocator.cpp
-	$(CC) -o testAllocator testAllocator.cpp
+test: linearAllocator
+	./linearAllocator
 
 clean:
-	rm -rf *.o linearAllocator testAllocator
+	rm -rf *.o linearAllocator
