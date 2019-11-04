@@ -3,7 +3,7 @@ CC=g++
 all: tokenParser
 
 run: tokenParser
-	./tokenParser < input_run.txt
+	./tokenParser
 
 tokenParser: main.o
 	$(CC) -o tokenParser main.o
