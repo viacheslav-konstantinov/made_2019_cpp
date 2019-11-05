@@ -24,28 +24,34 @@ class Matrix
     class Array1D 
     {
         private:
-            int dim2;
+            size_t dim2;
             int* Array1;
     
         public:
             friend class Matrix;
+            
             Array1D()
             : dim2(0), Array1(NULL) {}
-            int& operator[](int index);
-            const int& operator[] (int index) const;
+            Array1D(size_t d2);
+            
+            ~Array1D() { delete[] Array1;}
+            
+            int& operator[](size_t index);
+            const int& operator[] (size_t index) const;
+            void setDimension(size_t d2);
     }; // a proxy class Array1D
     
     private:
-        int dim1;
+        size_t dim1;
         Array1D* ArrayMatrix;
     public:
         Matrix()
         : dim1(0), ArrayMatrix(NULL) {};
-        Matrix(int d1, int d2);
-        virtual ~Matrix();
+        Matrix(size_t d1, size_t d2);
         
-        Array1D& operator[] (int index);
-        const Array1D& operator[] (int index) const;
+        ~Matrix() { delete[] ArrayMatrix; }
+        Array1D& operator[] (size_t index);
+        const Array1D& operator[] (size_t index) const;
         
         bool operator==(const Matrix& rhs);
         bool operator!=(const Matrix& rhs) 
@@ -57,44 +63,46 @@ class Matrix
         
         void printMatrix();
         void putValues();
-        int getNumberOfRows();
-        int getNumberofCols();
+        size_t getNumberOfRows();
+        size_t getNumberofCols();
 }; // the main class Matrix
 
-Matrix::Matrix(int d1, int d2)
+Matrix::Array1D::Array1D(size_t d2)
+{
+    dim2 = d2;
+    Array1 = new int [d2];
+}
+
+void Matrix::Array1D::setDimension(size_t d2)
+{
+    dim2 = d2;
+    delete [] Array1;
+    Array1 = new int [d2];
+}
+
+Matrix::Matrix(size_t d1, size_t d2)
 {
     dim1 = d1;
-    ArrayMatrix = new Array1D[dim1];
-    for (int i = 0; i < d1; ++i)
-    {
-        ArrayMatrix[i].dim2 = d2;
-        ArrayMatrix[i].Array1 = new int [d2];
-    }
+    ArrayMatrix = new Array1D [dim1]();
+    for (size_t i = 0; i < d1; ++i)
+        ArrayMatrix[i].setDimension(d2);
 }
 
-Matrix::~Matrix()
-{
-    for (int i(0);i < dim1; ++i)
-        delete [] ArrayMatrix[i].Array1;
-    
-    delete[] ArrayMatrix;
-}
-
-Matrix::Array1D& Matrix::operator[] (int index)
+Matrix::Array1D& Matrix::operator[] (size_t index)
 {
     if (index < dim1 and index >= 0)
         return ArrayMatrix[index];
     throw invalid_argument("Index 1 is out of range!");
 }
 
-const Matrix::Array1D& Matrix::operator[] (int index) const
+const Matrix::Array1D& Matrix::operator[] (size_t index) const
 { 
     if (index < dim1 and index >= 0)
         return ArrayMatrix[index];
     throw invalid_argument("Index 1 is out of range!");
 }
 
-int& Matrix::Array1D::operator[](int index)
+int& Matrix::Array1D::operator[](size_t index)
 {
     if (index < dim2 and index >= 0)
         return Array1[index];
@@ -102,7 +110,7 @@ int& Matrix::Array1D::operator[](int index)
         throw invalid_argument("Index 2 is out of range!");
 }
 
-const int& Matrix::Array1D::operator[](int index) const
+const int& Matrix::Array1D::operator[](size_t index) const
 {
     if (index < dim2 and index >= 0)
         return Array1[index];
@@ -114,9 +122,9 @@ bool Matrix::operator==(const Matrix& rhs)
 {
     if (dim1 == rhs.dim1 and ArrayMatrix[0].dim2 == rhs.ArrayMatrix[0].dim2)
     {
-        for(int i = 0; i < dim1; ++i)
+        for(size_t i = 0; i < dim1; ++i)
         {
-            for(int j = 0; j < ArrayMatrix[i].dim2; ++j)
+            for(size_t j = 0; j < ArrayMatrix[i].dim2; ++j)
             {
                 if (ArrayMatrix[i][j] != rhs.ArrayMatrix[i][j])
                     return false;
@@ -132,20 +140,26 @@ bool Matrix::operator==(const Matrix& rhs)
 
 Matrix& Matrix::operator *= (int multiplier)
 {
-    for(int i = 0; i < dim1; ++i)
+    int currentValue;
+    for(size_t i = 0; i < dim1; ++i)
     {
-        for(int j = 0; j < ArrayMatrix[i].dim2; ++j)
-            ArrayMatrix[i][j] = multiplier*ArrayMatrix[i][j];
+        for(size_t j = 0; j < ArrayMatrix[i].dim2; ++j)
+        {
+            currentValue = ArrayMatrix[i][j];
+            currentValue *= multiplier;
+            ArrayMatrix[i][j] = currentValue;
+        }
     }
+    return *this;
 }
 
 
 void Matrix::printMatrix()
 {
-    for(int i = 0; i < dim1; ++i)
+    for(size_t i = 0; i < dim1; ++i)
     {
         cout << "| ";
-        for(int j = 0; j < ArrayMatrix[i].dim2; ++j)
+        for(size_t j = 0; j < ArrayMatrix[i].dim2; ++j)
             cout << ArrayMatrix[i][j] << " ";
         cout << "|" << endl;
     }
@@ -154,9 +168,9 @@ void Matrix::printMatrix()
 void Matrix::putValues()
 {
     int x;
-    for(int i = 0; i < dim1; ++i)
+    for(size_t i = 0; i < dim1; ++i)
     {
-        for(int j = 0; j < ArrayMatrix[i].dim2; ++j)
+        for(size_t j = 0; j < ArrayMatrix[i].dim2; ++j)
         {
             cout << "Enter element "<< i << "x" << j <<": ";
             cin >> x;
@@ -166,19 +180,19 @@ void Matrix::putValues()
     cout << endl;
 }
 
-int Matrix::getNumberOfRows()
+size_t Matrix::getNumberOfRows()
 {
     return dim1;
 }
 
-int Matrix::getNumberofCols()
+size_t Matrix::getNumberofCols()
 {
     return ArrayMatrix[0].dim2;
 }
 
 int main()
 {   
-    int n(0), m(0);
+    size_t n(0), m(0);
 
     cout << "Creating the 1st matrix" << endl;
     cout << "Enter matrix dims n и m" << endl;
