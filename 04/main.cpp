@@ -73,6 +73,9 @@ Matrix::Array1D::Array1D(size_t d2)
     Array1 = new int [d2];
 }
 
+
+//Метод setDimension используется для того, чтобы в конструкторе класса 
+//Matrix в цикле установить размерность матрицы dim2
 void Matrix::Array1D::setDimension(size_t d2)
 {
     dim2 = d2;
