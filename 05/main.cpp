@@ -1,7 +1,12 @@
+/*
+Домашнее задание 5
+Простой сериализатор поддерживающий два типа: uint64_t и bool.
+Сериализовать в текстовый вид с разделением пробелом, bool сериализуется как true и false
+*/
+
 #include <iostream>
 #include <ostream>
 #include <string>
-
 
 // класс ошибок
 enum class Error
@@ -11,36 +16,34 @@ enum class Error
 };
 
 //функция для передачи в поток данных
-//по умолчанию putOutStream ничего не передает и возвращает -1
+//по умолчанию putOutStream ничего не передает и возвращает 
+//Error::CorruptedArchive
 template <typename T>
-int putOutStream(T val, std::ostream& os, char sep)
+Error putOutStream(T val, std::ostream& os, char sep)
 {
-    return -1;
+    return Error::CorruptedArchive;
 }
 
-//putOutStream специализирована под флаговый тип
-//и в этом случае возвращает 0
-template <>
-int putOutStream<bool>(bool val, std::ostream& os, char sep)
+//перегрузка putOutStream под флаговый тип
+//и в этом случае возвращает Error::NoError
+Error putOutStream(bool val, std::ostream& os, char sep)
 {
     if (val)
         os << "true" << sep;
     else 
         os << "false" << sep;
 
-    return 0;
+    return Error::NoError;
 }
 
-//putOutStream также специализирована под u_int64_t
-//и в этом случае также возвращает 0
-template <>
-int putOutStream<u_int64_t>(u_int64_t val, std::ostream& os, char sep)
+//перегрузка putOutStream под u_int64_t
+//в этом случае также возвращает Error::NoError
+Error putOutStream(u_int64_t val, std::ostream& os, char sep)
 {
     os << val << sep;
 
-    return 0;
+    return Error::NoError;
 }
-
 
 //класс сериалайзера
 class Serializer
@@ -56,22 +59,23 @@ class Serializer
             return object.serialize(*this);
         }
 
-        template <class... ArgsT>
-        Error operator()(ArgsT... args)
+        template <class... Args>
+        Error operator()(Args&&... args)
         {
-            return process_(args...);
+            return process_(std::forward<Args>(args)...);
         }
         
     private:
         std::ostream &out_;
 
         //сериализуем до тех пор, пока не встретится ошибочный тип поля
-        //или не закончатся все поля объекта, у которого все поля или флагового типа, типа u_int64_t
+        //или не закончатся все поля объекта, у которого все поля или 
+        //флагового типа, типа u_int64_t
         template<class U, class... Args>
         Error process_(U&& val, Args&&... args)
         {
-            int result = putOutStream(val, out_, Separator);
-            if(result == 0)
+            Error result = putOutStream(val, out_, Separator);
+            if(result == Error::NoError)
                 return process_(std::forward<Args>(args)...);
             else
                 return Error::CorruptedArchive;
@@ -80,8 +84,8 @@ class Serializer
         template<class U>
         Error process_(U&& val)
         {
-            int result = putOutStream(val, out_, Separator);
-            if(result == 0)
+            Error result = putOutStream(val, out_, Separator);
+            if(result == Error::NoError)
                 return Error::NoError;
             else
                 return Error::CorruptedArchive;
@@ -91,17 +95,17 @@ class Serializer
 
 //функция для чтения данных из потока
 //по умолчанию getInStream ничего не читает, 
-//не сохраняет и возвращает -1
+//не сохраняет и возвращает Error::CorruptedArchive
 template <typename T>
-int getInStream(T& val, std::istream& inStream)
+Error getInStream(T& val, std::istream& inStream)
 {
-    return -1;
+    return Error::CorruptedArchive;
 }
 
-//getInStream специализирована под флаговый тип
-//и в этом случае записывет в val данные и возвращает 0
-template <>
-int getInStream<bool>(bool& val, std::istream& inStream)
+//getInStream перегружена под флаговый тип
+//и в этом случае записывет в val данные и возвращает Error::NoError
+//в случае удачного считывания и Error::CorruptedArchive при ошибке
+Error getInStream(bool& val, std::istream& inStream)
 {
     std::string buffer;
     inStream >> buffer;
@@ -111,16 +115,16 @@ int getInStream<bool>(bool& val, std::istream& inStream)
     else if (buffer == "false")
         val = false;
     else
-        return -1;
+        return Error::CorruptedArchive;
 
-    return 0;
+    return Error::NoError;
 }
 
 
-//getInStream также специализирована под u_int64_t
-//и в этом случае записывет в val данные и также возвращает 0
-template <>
-int getInStream<u_int64_t>(u_int64_t& val, std::istream& inStream)
+//getInStream также перегружена под u_int64_t
+//и в этом случае записывет в val данные и также возвращает Error::NoError
+//в случае удачного считывания и Error::CorruptedArchive при ошибке
+Error getInStream(u_int64_t& val, std::istream& inStream)
 {
     std::string buffer;
     inStream >> buffer;
@@ -128,11 +132,11 @@ int getInStream<u_int64_t>(u_int64_t& val, std::istream& inStream)
     try
     {
         val = std::stoll(buffer);
-        return 0;
+        return Error::NoError;
     }
-    catch(...)
+    catch(std::invalid_argument &e)
     {
-        return -1;
+        return Error::CorruptedArchive;
     }
 }
 
@@ -149,10 +153,10 @@ class Deserializer
             return object.serialize(*this);
         }
 
-        template <class... ArgsT>
-        Error operator()(ArgsT&... args)
+        template <class... Args>
+        Error operator()(Args&&... args)
         {
-            return process_(args...);
+            return process_(std::forward<Args>(args)...);
         }
     
     private:
@@ -160,22 +164,23 @@ class Deserializer
 
         //десериализуем до тех пор, пока не встретится ошибочный тип поля
         //или ошибочный формат данных,
-        //или не закончатся все поля объекта, у которого все поля или флагового типа, типа u_int64_t
+        //или не закончатся все поля объекта, у которого все поля или 
+        //флагового типа, типа u_int64_t
         template<class U, class... Args>
-        Error process_(U& val, Args&&... args)
+        Error process_(U&& val, Args&&... args)
         {
-            int result = getInStream(val, in_);
-            if(result == 0)
+            Error result = getInStream(val, in_);
+            if(result == Error::NoError)
                 return process_(std::forward<Args>(args)...);
             else
                 return Error::CorruptedArchive;
         }
 
         template<class U>
-        Error process_(U& val)
+        Error process_(U&& val)
         {
-            int result = getInStream(val, in_);
-            if(result == 0)
+            Error result = getInStream(val, in_);
+            if(result == Error::NoError)
                 return Error::NoError;
             else
                 return Error::CorruptedArchive;
