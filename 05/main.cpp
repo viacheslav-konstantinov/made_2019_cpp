@@ -74,7 +74,7 @@ class Serializer
         template<class U, class... Args>
         Error process_(U&& val, Args&&... args)
         {
-            Error result = putOutStream(val, out_, Separator);
+            Error result = putOutStream(std::forward<U>(val), out_, Separator);
             if(result == Error::NoError)
                 return process_(std::forward<Args>(args)...);
             else
@@ -84,7 +84,7 @@ class Serializer
         template<class U>
         Error process_(U&& val)
         {
-            Error result = putOutStream(val, out_, Separator);
+            Error result = putOutStream(std::forward<U>(val), out_, Separator);
             if(result == Error::NoError)
                 return Error::NoError;
             else
@@ -169,7 +169,7 @@ class Deserializer
         template<class U, class... Args>
         Error process_(U&& val, Args&&... args)
         {
-            Error result = getInStream(val, in_);
+            Error result = getInStream(std::forward<U>(val), in_);
             if(result == Error::NoError)
                 return process_(std::forward<Args>(args)...);
             else
@@ -179,7 +179,7 @@ class Deserializer
         template<class U>
         Error process_(U&& val)
         {
-            Error result = getInStream(val, in_);
+            Error result = getInStream(std::forward<U>(val), in_);
             if(result == Error::NoError)
                 return Error::NoError;
             else
