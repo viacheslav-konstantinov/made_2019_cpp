@@ -136,7 +136,7 @@ BigInteger::BigInteger(int&& other)
     digitLength_ = 0;
     digits_ = nullptr;
 
-    int buffer(std::forward<int>(other));
+    int buffer(other);
     
     //вычисление требуемого количества разрядов
     size_t necessaryDigits;
@@ -235,7 +235,7 @@ BigInteger::BigInteger(const int& other)
 
 BigInteger& BigInteger::operator=(BigInteger&& other)
 {
-    if(*this == other)
+    if(this == &other)
         return *this;
 
     // резервное копирование из other
