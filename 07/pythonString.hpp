@@ -22,9 +22,9 @@ void getPrintedArgs( std::vector<std::string>& inputArray, T&& value, TArgs&&...
 
 
 template<typename ...TArgs>
-std::string pythonString(std::string str = "", TArgs&&... args)
+std::string pythonString(std::string& str = "", TArgs&&... args)
 {
-    if(!str.length())
+    if(str.empty())
         return str;
     
     //проверка синтаксиса
@@ -46,7 +46,6 @@ std::string pythonString(std::string str = "", TArgs&&... args)
     //значит последняя открывающая фигурная скобка не имеет пары
     if (!openBraceExprected)
         throw std::runtime_error("Invalid using of an opening brace, check syntax");
-    std::string result = "";
     
     //строка с заданным индексом i = то, как выводится в стандартный поток вывода
     //аргумент с индексом i из args
@@ -57,52 +56,43 @@ std::string pythonString(std::string str = "", TArgs&&... args)
         //запись в массив argsPrinted того, как args выводятся во внешний поток в виде строк
         getPrintedArgs(argsPrinted, std::forward<TArgs>(args)...);
     }
+    // ловим это исключение, если операция ss << std::forward<T>(value);
+    // завершится неудачей, то есть value не может быть выведен в стандартный выходной поток
     catch(const std::ios::failure& e)
     {
-        std::string message = "Some of the provided arguments cannot be printed into std::cout.\n";
+        std::string message = "Some of the provided arguments cannot be printed into output stream.\n";
         message += e.what();
         throw std::runtime_error(message);
     }
-    
-    size_t tokenStartIdx = 0;
-    for(size_t idx = 0; idx < str.length();)
+
+
+    std::string result = "";
+    for(size_t idx = 0; idx < str.length(); )
     {
         if(str.at(idx) == '{')
         {
-            size_t idxOfClosingBracket = str.find('}', tokenStartIdx);
-
-            size_t argIdx;
-                
+            size_t  argIdx;
+            size_t  pos = idx;     
             try
             {
-                if(idx > 0 && idxOfClosingBracket < str.length())
+
+                argIdx = std::stoi(str.substr(idx + 1), &pos);
+                result = result + argsPrinted.at(argIdx);
+                idx = idx + 1 + pos;
+                
+                if( str.at(idx) != '}')
                 {
-                    std::string previousToken = str.substr(tokenStartIdx, idx - tokenStartIdx);
-                    argIdx = std::stoi(str.substr(idx + 1, idxOfClosingBracket - idx - 1));
-                    result = result + previousToken + argsPrinted.at(argIdx);
-                    tokenStartIdx = idxOfClosingBracket + 1;
-                    idx = idxOfClosingBracket + 1;
+                    //после парсинга числа следующий за ним символ != }' => нарушение синтаксиса
+                    std::string message = "Expected a closing brace at position " + std::to_string(idx) + ", ";
+                    message = message + "but " + str.at(idx) + " instead.\n";
+                    message = message + "Successfully passed part of the string:\n" + result;
+                    throw std::runtime_error(message);
                 }
-                else if (idx == 0 && idxOfClosingBracket < str.length())
+                else
                 {
-                    argIdx = std::stoi(str.substr(idx + 1, idxOfClosingBracket - idx - 1));
-                    result = result + argsPrinted.at(argIdx);
-                    tokenStartIdx = idxOfClosingBracket + 1;
-                    idx = idxOfClosingBracket + 1;            
+                    ++idx;
                 }
-                else if (idx > 0 && idxOfClosingBracket == str.length() - 1)
-                {
-                    std::string previousToken = str.substr(tokenStartIdx, idx - tokenStartIdx);
-                    argIdx = std::stoi(str.substr(idx + 1, idxOfClosingBracket - idx - 1));
-                    result = result + previousToken + argsPrinted.at(argIdx);
-                    break;               
-                }
-                else if (idx == 0 && idxOfClosingBracket == str.length() - 1)
-                {
-                    argIdx = std::stoi(str.substr(idx + 1, idxOfClosingBracket - idx - 1));
-                    result = result + argsPrinted.at(argIdx);
-                    break;
-                }
+
             }
             // если не хватит памяти для str.substr
             catch(const std::bad_alloc& e)
@@ -115,7 +105,7 @@ std::string pythonString(std::string str = "", TArgs&&... args)
             {
                 std::string message;
                 size_t maxIdx;
-                if (argsPrinted.size() >0)
+                if (argsPrinted.size() >0 )
                     maxIdx = argsPrinted.size() - 1;
                 else 
                     maxIdx = 0;
@@ -136,14 +126,10 @@ std::string pythonString(std::string str = "", TArgs&&... args)
                 throw std::runtime_error(message);
             }                
         }
-        else if (str.at(idx) != '}')
+        else if (str.at(idx)  != '}')
         {
+            result += str.at(idx) ;
             ++idx;
-            if(idx != str.length())
-                continue;
-            else
-                result = result + str.substr(tokenStartIdx, idx - tokenStartIdx);
-            
         }
         else
         {
@@ -152,7 +138,6 @@ std::string pythonString(std::string str = "", TArgs&&... args)
             message = message + "Successfully passed part of the string:\n" + result;
             throw std::runtime_error(message);
         }
-        
     }
 
     return result;
