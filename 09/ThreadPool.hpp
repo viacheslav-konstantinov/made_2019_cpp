@@ -1,6 +1,7 @@
 // заголовочный фал с реализацией класса ThreadPool
 
 #include <future>
+#include <thread>
 #include <vector>
 #include <deque>
 #include <iostream>
@@ -15,6 +16,7 @@ using std::unique_lock;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::thread;
 
 //функции, которые кладутся в пул потоков,
 //приводятся к виду WorkerFunction, где R - тип возвращаемых
@@ -40,15 +42,20 @@ private:
     //перечень работ для выполнения
     deque<packaged_task<void()>> works;
     //потоки
-    vector<future<void>> workingThreads;
+    vector<thread> workingThreads;
     //статусы потоков
     vector<workerState> workerStatus;
+    //переменная = нужно ли завершить работу потока
+    //необходим для корректного удаления пула
+    vector<bool> stopWorker;
 
     void worker(size_t idx) 
     {
         //номер потока
         size_t workerIdx = idx;
-        while(true)
+
+        //до тех пор, пока можно работать, работаем
+        while(!stopWorker.at(workerIdx))
         {
             packaged_task<void()> f;
             {
@@ -73,20 +80,26 @@ private:
             }
 
             // выполняем работу и после завершения меняем статус на ready
+            #ifdef DEBUG
             cout << "Calling worker #" << workerIdx << endl;
+            #endif
             f();
             workerStatus[idx] = workerState::ready;
         }
+        return;
     }
 
 public:
     explicit ThreadPool(size_t poolSize)
     {
+
+        //запускаем потоки и устанавливаем первоначальные статусы потоков
+        workerStatus.resize(poolSize, workerState::ready);
+        stopWorker.resize(poolSize, false);
+
         for (size_t i = 0; i < poolSize; ++i)
         {
-            //запускаем потоки и устанавливаем первоначальные статусы потоков
-            workerStatus.push_back(workerState::ready);
-            workingThreads.push_back(std::async(std::launch::async, [this, i]{ worker(i);}));
+            workingThreads.push_back(thread( [this, i]{ worker(i);}));
         }
             
     }
@@ -94,12 +107,26 @@ public:
     ~ThreadPool() 
     {         
         {
+            // заполняем дек "пустыми" работами
+            // кол-во работ = кол-во потоков
+            // указываем потокам, чтобы они завершили свою работу
             unique_lock<mutex> l(m);
-            for(auto&&unused : workingThreads)
+            for(size_t idx = 0; idx < workingThreads.size(); ++idx)
+            {
                 works.push_back({});
+                stopWorker[idx] = true;
+            }
+                
+        }
+
+        v.notify_all();
+
+        // гарантируем, что все потоки перед удалением будут завершены
+        for(size_t idx = 0; idx < workingThreads.size(); ++idx)
+        {
+            workingThreads[idx].join();
         }
         
-        v.notify_all();
         workingThreads.clear();
     }
 
