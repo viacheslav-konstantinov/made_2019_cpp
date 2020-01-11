@@ -52,7 +52,9 @@ int main()
     
     Function func = [](int x)->long 
     {
+        #ifdef DEBUG 
         cout << "Providing calculations for x = " << x << endl;
+        #endif
         return x*x*x;
     };
     
@@ -63,13 +65,18 @@ int main()
     for(int i = 0; i <= N; ++i)
         results.emplace_back(pool.exec(func, i));
 
+    #ifdef DEBUG
     pool.printWorkerStates();
+    #endif
 
     while(!pool.isReady())
     {
-        std::this_thread::sleep_for(10ns);
+        std::this_thread::sleep_for(50ns);
+        
+        #ifdef DEBUG    
         cout << "Calculations are still in progress...\n";
         pool.printWorkerStates();
+        #endif
     }
         
     cout << "Results:\n";
