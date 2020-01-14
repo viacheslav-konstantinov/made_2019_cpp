@@ -1,5 +1,6 @@
 // заголовочный фал с реализацией класса ThreadPool
 
+#include <atomic>
 #include <future>
 #include <thread>
 #include <vector>
@@ -36,46 +37,74 @@ class ThreadPool
 private:
 
     //мютекс и условная переменная для организации работы потоков
-    mutex m;
-    condition_variable v;
+    mutex m_;
+    condition_variable v_;
 
     //перечень работ для выполнения
-    deque<packaged_task<void()>> works;
+    deque<packaged_task<void()>> works_;
     //потоки
-    vector<thread> workingThreads;
+    vector<thread> workingThreads_;
     //статусы потоков
-    vector<workerState> workerStatus;
+    vector<workerState> workerStatus_;
     //переменная = нужно ли завершить работу потока
     //необходим для корректного удаления пула
-    vector<bool> stopWorker;
+    std::atomic_bool stopPool_;
 
     void worker(size_t idx) 
     {
         //номер потока
         size_t workerIdx = idx;
 
-        //до тех пор, пока можно работать, работаем
-        while(!stopWorker.at(workerIdx))
+        //переменная, в которую записывается текущее значение 
+        //stopPool_ при уведомлении потока
+        bool doStop;
+
+        while(true)
         {
             packaged_task<void()> f;
             {
-                unique_lock<mutex> l(m);
-                if (works.empty())
+                unique_lock<mutex> l(m_);
+                if (works_.empty())
                 {
-                    //ждём нового задания
-                    v.wait(l, [&]{return !works.empty();});
+                    //ждём нового задания или окончания работы пула
+                    v_.wait(l, 
+                    [&]
+                    {
+                        //чтобы лишний раз не проверять значение атомарной переменной,
+                        //проверим, если работы в works_
+                        if(!works_.empty())
+                            return true;
+
+                        //проверяем stopPool_ только если works_ пуст
+                        doStop = stopPool_.load(); 
+                        return doStop;
+                    });
                 }
+
+                //если работа пула завершена, выходим из цикла
+                if(doStop) 
+                {
+                    #ifdef DEBUG
+                    cout << "Stopping worker #" << workerIdx << "..." << endl;
+                    #endif
+                    return;
+                }
+
                 //если есть задание, то меняем статус на occupied
-                workerStatus[idx] = workerState::occupied;
-                f = std::move(works.front());
-                works.pop_front();
+                workerStatus_[idx] = workerState::occupied;
+                f = std::move(works_.front());
+                works_.pop_front();
+                
             }
             
             // если задание некорректно, то меняем статус на ready
             // и ждём работу
             if (!f.valid()) 
             {
-                workerStatus[idx] = workerState::ready;
+                #ifdef DEBUG
+                cout << "Invalid work for worker #" << workerIdx << endl;
+                #endif
+                workerStatus_[idx] = workerState::ready;
                 return;
             }
 
@@ -84,50 +113,36 @@ private:
             cout << "Calling worker #" << workerIdx << endl;
             #endif
             f();
-            workerStatus[idx] = workerState::ready;
+            workerStatus_[idx] = workerState::ready;
         }
-        return;
     }
 
 public:
     explicit ThreadPool(size_t poolSize)
     {
 
-        //запускаем потоки и устанавливаем первоначальные статусы потоков
-        workerStatus.resize(poolSize, workerState::ready);
-        stopWorker.resize(poolSize, false);
+        //запускаем потоки и устанавливаем первоначальные статусы
+        workerStatus_.resize(poolSize, workerState::ready);
+        stopPool_.store(false);
 
-        for (size_t i = 0; i < poolSize; ++i)
+        for(size_t i = 0; i < poolSize; ++i)
         {
-            workingThreads.push_back(thread( [this, i]{ worker(i);}));
+            workingThreads_.push_back(thread( [this, i]{ worker(i);}));
         }
             
     }
     
     ~ThreadPool() 
-    {         
-        {
-            // заполняем дек "пустыми" работами
-            // кол-во работ = кол-во потоков
-            // указываем потокам, чтобы они завершили свою работу
-            unique_lock<mutex> l(m);
-            for(size_t idx = 0; idx < workingThreads.size(); ++idx)
-            {
-                works.push_back({});
-                stopWorker[idx] = true;
-            }
-                
-        }
+    {   
+        //завершаем работу пула, уведовляем потоки
+        stopPool_.store(true);   
+        v_.notify_all();
 
-        v.notify_all();
-
-        // гарантируем, что все потоки перед удалением будут завершены
-        for(size_t idx = 0; idx < workingThreads.size(); ++idx)
+        //дожидаемся завершения работы всех потоков
+        for(size_t idx = 0; idx < workingThreads_.size(); ++idx)
         {
-            workingThreads[idx].join();
+            workingThreads_[idx].join();
         }
-        
-        workingThreads.clear();
     }
 
     ThreadPool(const ThreadPool& other) = delete;
@@ -147,26 +162,26 @@ public:
         auto result = newTask.get_future();
         {
             //кладём в очередь новое задание
-            unique_lock<mutex> l(m);
-            works.emplace_back(std::move(newTask));
+            unique_lock<mutex> l(m_);
+            works_.emplace_back(std::move(newTask));
         }
         
         //оповещаем, что поток освободился
-        v.notify_one();
+        v_.notify_one();
         return result;
     }
     
     bool isReady()
     {
         {
-            unique_lock<mutex> l(m);
-            for(auto& state : workerStatus)
+            unique_lock<mutex> l(m_);
+            for(auto& state : workerStatus_)
             {
                 if(state != workerState::ready) 
                     return false;
             }
 
-            if (!works.empty()) return false;
+            if (!works_.empty()) return false;
         }
         return true;
     }
@@ -174,18 +189,18 @@ public:
     void printWorkerStates()
     {
         {
-            unique_lock<mutex> l(m);
+            unique_lock<mutex> l(m_);
             cout << "-------------------------------------------\n";
             cout << "Current states of the threads in the pool:\n";
-            for(size_t i = 0; i < workerStatus.size(); ++i)
+            for(size_t i = 0; i < workerStatus_.size(); ++i)
             {
-                if(workerStatus[i] == workerState::ready) 
+                if(workerStatus_[i] == workerState::ready) 
                     cout << "Thread #" << i << " is ready\n";
                 else
                     cout << "Thread #" << i << " is occupied\n";
             }
             cout << endl;
-            cout << "Number of workes to finish: " << works.size() << endl;
+            cout << "Number of workes to finish: " << works_.size() << endl;
             cout << "-------------------------------------------\n";
         }
         return;
