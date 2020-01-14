@@ -70,14 +70,9 @@ private:
                     v_.wait(l, 
                     [&]
                     {
-                        //чтобы лишний раз не проверять значение атомарной переменной,
-                        //проверим, если работы в works_
-                        if(!works_.empty())
-                            return true;
-
-                        //проверяем stopPool_ только если works_ пуст
+                        //записываем в doStop, чтобы далее не обращаться за значением атомарной переменной
                         doStop = stopPool_.load(); 
-                        return doStop;
+                        return doStop || !works_.empty();
                     });
                 }
 
