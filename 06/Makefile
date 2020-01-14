@@ -5,11 +5,14 @@ all: bigInteger
 run: bigInteger
 	./bigInteger
 
-bigInteger: main.o
-	$(CC) -o bigInteger main.o
+bigInteger: main.o bigInteger.o
+	$(CC) -o bigInteger bigInteger.o main.o
 
 main.o: main.cpp
-	$(CC) -c bigInteger.hpp main.cpp
+	$(CC) -c main.cpp
+
+bigInteger.o: bigInteger.cpp
+	$(CC) -c bigInteger.hpp bigInteger.cpp
 
 test: bigInteger
 	./bigInteger < input.txt
