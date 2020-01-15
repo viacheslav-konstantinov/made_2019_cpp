@@ -31,14 +31,13 @@ class Matrix
             friend class Matrix;
             
             Array1D()
-            : dim2(0), Array1(NULL) {}
-            Array1D(size_t d2);
-            
+                : dim2(0), Array1(NULL) {};
+            Array1D(size_t d2)
+                : dim2(d2), Array1(new int[d2]) {};
+        
             ~Array1D() { delete[] Array1;}
-            
             int& operator[](size_t index);
             const int& operator[] (size_t index) const;
-            void setDimension(size_t d2);
     }; // a proxy class Array1D
     
     private:
@@ -46,7 +45,7 @@ class Matrix
         Array1D* ArrayMatrix;
     public:
         Matrix()
-        : dim1(0), ArrayMatrix(NULL) {};
+            : dim1(0), ArrayMatrix(NULL) {};
         Matrix(size_t d1, size_t d2);
         
         ~Matrix() { delete[] ArrayMatrix; }
@@ -67,25 +66,12 @@ class Matrix
         size_t getNumberofCols();
 }; // the main class Matrix
 
-Matrix::Array1D::Array1D(size_t d2)
-{
-    dim2 = d2;
-    Array1 = new int [d2];
-}
-
-void Matrix::Array1D::setDimension(size_t d2)
-{
-    dim2 = d2;
-    delete [] Array1;
-    Array1 = new int [d2];
-}
-
 Matrix::Matrix(size_t d1, size_t d2)
 {
     dim1 = d1;
-    ArrayMatrix = new Array1D [dim1]();
-    for (size_t i = 0; i < d1; ++i)
-        ArrayMatrix[i].setDimension(d2);
+    ArrayMatrix = new Array1D[dim1];
+    for(int i=0; i<d1; i++)
+        new (ArrayMatrix + i) Array1D(d2);
 }
 
 Matrix::Array1D& Matrix::operator[] (size_t index)
